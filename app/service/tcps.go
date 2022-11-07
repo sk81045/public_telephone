@@ -109,23 +109,21 @@ func (c *Client) Process() bool {
 		fmt.Println("piece2", piece2)
 		fmt.Println("piece3", piece3)
 		var instruction string
+		var method telephone.Origin
 		switch piece2 {
-		case "05": //网络连接状态查询
+		case "05":
 			fmt.Println("网络连接状态查询")
 			instruction = piece1 + piece2 + piece3
-		case "10": //验证
-			fmt.Println("验证")
+		case "10":
+			fmt.Println("公话认证")
+			instruction, _ = method.Operation_10(originstr)
+		case "04":
+			fmt.Println("学生签到记录")
 			piece3 = piece3 + "1"
 			instruction = piece1 + piece2 + piece3
-		case "04": //登录
-			fmt.Println("登录")
-			piece3 = piece3 + "1"
-			instruction = piece1 + piece2 + piece3
-		case "01": //亲情号码
-			instruction, err = telephone.Operation_01(originstr)
-			if err != nil {
-				fmt.Println("instructionErr", err)
-			}
+		case "01":
+			fmt.Println("获取亲情号码")
+			instruction, _ = method.Operation_01(originstr)
 		case "03": //话单
 			piece3 = piece3 + "1"
 			instruction = piece1 + piece2 + piece3
