@@ -105,7 +105,7 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 // @Description  处理通话订单
 // @param_1 初始报文
 func (o *Origin) Operation_03(origin string) (string, error) {
-	basics := origin[0:4] + origin[4:6] + origin[6:10]
+	// basics := origin[0:4] + origin[4:6] + origin[6:10]
 	KEY := origin[10:18]
 	IC := helpers.Hex2Dec(origin[18:26]) //IC
 	SID := origin[26:44]                 //SID
@@ -147,7 +147,7 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 	fmt.Println("DURATION", DURATION)
 	fmt.Println("NUMBER", NUMBER)
 
-	return basics + "1", err
+	return origin[4:6] + origin[6:10] + "1", err
 }
 
 //处理通话订单
