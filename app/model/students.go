@@ -2,7 +2,7 @@ package model
 
 type Students struct {
 	ID         int
-	Sid        string    `gorm:"column:sid"`
+	Sid        int       `gorm:"column:sid"`
 	Name       string    `gorm:"column:name"`
 	Studentid  string    `gorm:"column:studentid"`
 	Balance    float32   `gorm:"column:balance"`

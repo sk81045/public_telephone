@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 )
@@ -27,4 +28,15 @@ func JoiningString(s1 string, s2 string, le int) string {
 	build.WriteString(s1)
 	build.WriteString(p)
 	return build.String()
+}
+
+// @Description  生成随机数
+const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+
+func RandStr(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

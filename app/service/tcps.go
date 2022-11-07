@@ -124,9 +124,9 @@ func (c *Client) Process() bool {
 		case "01":
 			fmt.Println("获取亲情号码")
 			instruction, _ = method.Operation_01(originstr)
-		case "03": //话单
-			piece3 = piece3 + "1"
-			instruction = piece1 + piece2 + piece3
+		case "03":
+			fmt.Println("处理话单")
+			instruction, _ = method.Operation_03(originstr)
 		default:
 			return false
 		}

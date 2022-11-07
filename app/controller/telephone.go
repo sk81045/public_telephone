@@ -5,6 +5,11 @@ import (
 	"Hwgen/global"
 	helpers "Hwgen/utils"
 	"fmt"
+	"time"
+
+	"strconv"
+
+	"gorm.io/gorm"
 )
 
 var (
@@ -97,11 +102,76 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 	return lastinstruction, err
 }
 
+// @Description  处理通话订单
+// @param_1 初始报文
+func (o *Origin) Operation_03(origin string) (string, error) {
+	basics := origin[0:4] + origin[4:6] + origin[6:10]
+	KEY := origin[10:18]
+	IC := helpers.Hex2Dec(origin[18:26]) //IC
+	SID := origin[26:44]                 //SID
+	ORDER := origin[44:46]               //ORDER
+	STIME := origin[46:60]               //STIME
+	DURATION, _ := strconv.ParseFloat(origin[60:66], 32)
+	NUMBER := origin[66:77] //NUMBER
+	student, _ := GetStudent(IC)
+	OrderData := model.Payorder{
+		Pid:      student.ID,
+		Sid:      student.Sid,
+		Orderid:  "tp" + fmt.Sprintf("%d", time.Now().UnixNano()) + helpers.RandStr(6),
+		Price:    float32(DURATION) / 60 * 0.2, //计费
+		From:     "telephone:" + KEY,
+		Category: "1",
+	}
+	Order, _ := CallingOrder(OrderData)
+	fmt.Println("CallingOrder", Order)
+	LogData := model.Calllog{
+		Pid:         student.ID,
+		Sid:         student.Sid,
+		Oid:         22,
+		Key:         KEY,
+		Ic:          IC,
+		Describe:    "Calling",
+		PhoneNumber: NUMBER,
+		CallTime:    int(DURATION),
+		Cost:        float32(DURATION) / 60 * 0.2, //计费
+		Stime:       STIME,
+		Created_at:  time.Now().Unix(),
+	}
+	Calling, err := CallingLog(LogData)
+	fmt.Println("CallingLog", Calling.Error)
+	fmt.Println("KEY", KEY)
+	fmt.Println("IC", IC)
+	fmt.Println("SID", SID)
+	fmt.Println("ORDER", ORDER)
+	fmt.Println("STIME", STIME)
+	fmt.Println("DURATION", DURATION)
+	fmt.Println("NUMBER", NUMBER)
+
+	return basics + "1", err
+}
+
+//处理通话订单
+func CallingOrder(data model.Payorder) (*gorm.DB, error) {
+	result := global.H_DB.Create(&data)
+	if result.Error != nil {
+		fmt.Println("func DisposePhoneOrder():处理通话订单失败")
+	}
+	return result, result.Error
+}
+
+//处理通话记录
+func CallingLog(data model.Calllog) (*gorm.DB, error) {
+	result := global.H_DB.Create(&data)
+	if result.Error != nil {
+		fmt.Println("func CallingLog():处理通话记录失败")
+	}
+	return result, result.Error
+}
+
 // 获取设备信息
 func GetDevice(key string) (model.Device, error) {
-	Db := global.H_DB
 	var device = model.Device{}
-	err := Db.Model(&model.Device{}).Where("`key` = ? AND `category` = ? AND `status` = ?", key, 1, 1).Find(&device).Error
+	err := global.H_DB.Model(&model.Device{}).Where("`key` = ? AND `category` = ? AND `status` = ?", key, 1, 1).Find(&device).Error
 	if device.ID == 0 {
 		err = fmt.Errorf("func GetDevice():没有获取到此设备信息")
 	}
@@ -110,9 +180,8 @@ func GetDevice(key string) (model.Device, error) {
 
 // 获取学生信息
 func GetStudent(ic string) (model.Students, error) {
-	Db := global.H_DB
 	var student = model.Students{}
-	err := Db.Model(&model.Students{}).Where("`cardid` = ?", ic).Preload("Parents").Find(&student).Error
+	err := global.H_DB.Model(&model.Students{}).Where("`cardid` = ?", ic).Preload("Parents").Find(&student).Error
 	if student.ID == 0 {
 		err = fmt.Errorf("func GetStudent():没有获取到学生信息")
 	}
