@@ -4,7 +4,6 @@ type Calllog struct {
 	ID          int
 	Sid         int     `gorm:"column:sid"`
 	Pid         int     `gorm:"column:pid"`
-	Oid         int     `gorm:"column:oid"`
 	Key         string  `gorm:"column:key"`
 	Ic          string  `gorm:"column:ic"`
 	Describe    string  `gorm:"column:describe"`

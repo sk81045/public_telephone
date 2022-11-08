@@ -3,9 +3,10 @@ package model
 import "time"
 
 type Payorder struct {
-	ID         uint      `gorm:"column:id,primaryKey"`
+	ID         int       `gorm:"column:id,primaryKey"`
 	Sid        int       `gorm:"column:sid"`
 	Pid        int       `gorm:"column:pid"`
+	Lid        int       `gorm:"column:lid"`
 	Orderid    string    `gorm:"column:orderid"`
 	Price      float32   `gorm:"column:price"`
 	Type       string    `gorm:"column:type"`
