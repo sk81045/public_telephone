@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -31,6 +30,9 @@ var manager = ClientManager{
 	unregister: make(chan *Client),
 	clients:    make(map[*Client]bool),
 }
+var (
+	method telephone.Origin
+)
 
 func Run() {
 	listener, err := net.Listen("tcp", "0.0.0.0:10087")
@@ -99,9 +101,8 @@ func (c *Client) Process() bool {
 			break
 		}
 		originstr := string(buf[:n])
-		originstr = strings.Replace(originstr, " ", "", -1)
 		fmt.Println("origin", originstr)
-
+		originstr = strings.Replace(originstr, " ", "", -1)
 		piece1 := originstr[0:4]
 		piece2 := originstr[4:6]
 		piece3 := originstr[6:10]
@@ -109,7 +110,6 @@ func (c *Client) Process() bool {
 		fmt.Println("piece2", piece2)
 		fmt.Println("piece3", piece3)
 		var instruction string
-		var method telephone.Origin
 		switch piece2 {
 		case "05":
 			fmt.Println("网络连接状态查询")
@@ -127,6 +127,13 @@ func (c *Client) Process() bool {
 		case "03":
 			fmt.Println("处理话单")
 			instruction, _ = method.Operation_03(originstr)
+		case "81":
+			fmt.Println("公话状态告警")
+			instruction, _ = method.Operation_81(originstr)
+		case "82":
+			fmt.Println("获取公话状态")
+			instruction, _ = method.Operation_82(originstr)
+			continue
 		default:
 			return false
 		}
@@ -137,50 +144,6 @@ func (c *Client) Process() bool {
 		}
 	}
 	return true
-}
-
-func Hex2Dec(val string) int {
-	n, err := strconv.ParseUint(val, 16, 32)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return int(n)
-}
-
-// func (c *Client) Read() {
-// 	defer c.conn.Close()
-// 	reader := bufio.NewReader(c.conn)
-// 	for {
-// 		msg, err := proto.Decode(reader)
-// 		if err == io.EOF {
-// 			return
-// 		}
-// 		if err != nil {
-// 			fmt.Println("decode msg failed, err:", err)
-// 			return
-// 		}
-// 		// var Msg Message
-// 		// err = json.Unmarshal([]byte(msg), &Msg)
-// 		// if err != nil {
-// 		// 	fmt.Println("json.Unmarshal error:", err)
-// 		// }
-// 		fmt.Println("Recived from client,data", msg)
-// 		// if Msg.Type == 2 {
-// 		// 	c.id = Msg.Pid
-// 		// 	go c.Operations(c.id)
-// 		// }
-// 	}
-// }
-
-func (c *Client) Operations(id int) {
-	for conn := range manager.clients {
-		fmt.Println("conn.id", conn.id)
-		if conn.id == id {
-			conn.send <- []byte("action!")
-		}
-	}
-	time.Sleep(3 * time.Second)
-	c.Operations(id)
 }
 
 func (c *Client) Write() {
@@ -212,9 +175,10 @@ func W(conn net.Conn, msg string) bool {
 
 func (c *Client) Ping() {
 	for {
-		time.Sleep(5 * time.Second)
-		msg := "ping ==>" + c.uuid.String()
-		d := W(c.conn, msg)
+		time.Sleep(300 * time.Second)
+		fmt.Println("Ping...")
+		instruction, _ := method.TelephoneState()
+		d := W(c.conn, instruction)
 		if d != true {
 			manager.unregister <- c
 			break

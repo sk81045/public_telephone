@@ -34,7 +34,8 @@ func (o *Origin) Operation_10(origin string) (string, error) {
 	o.piece_2 = origin[4:6]
 	o.piece_3 = origin[6:10]
 	o.piece_4 = origin[10:18] //phone_code
-	instruction := o.piece_1 + o.piece_2
+	head := helpers.PackageHead(o.piece_1 + o.piece_2 + o.piece_3 + "0")
+	instruction = head + o.piece_2
 	device, err := GetDevice(o.piece_4)
 	if err != nil {
 		instruction += o.piece_3 + "0"
@@ -155,6 +156,55 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 	instruction = helpers.PackageHead(origin[0:4] + origin[4:6] + origin[6:10] + "1")
 	lastinstruction := instruction + origin[4:6] + origin[6:10] + "1"
 	return lastinstruction, nil
+}
+
+// @Description  公话状态告警
+// @param_1 初始报文
+func (o *Origin) Operation_81(origin string) (string, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	o.piece_1 = origin[0:4]
+	o.piece_2 = origin[4:6]
+	o.piece_3 = origin[6:10]
+	instruction = helpers.PackageHead(origin[0:4] + origin[4:6] + origin[6:10] + "1")
+	lastinstruction := instruction + origin[4:6] + origin[6:10] + "1"
+	return lastinstruction, nil
+}
+
+// @Description  公话状态告警
+// @param_1 初始报文
+func (o *Origin) Operation_82(origin string) (string, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	params := make(map[string]string)
+	params["key"] = origin[10:18]
+	params["version"] = origin[18:28]
+	params["power"] = origin[28:29]
+	params["receiver"] = origin[29:30]
+	params["door"] = origin[30:31]
+
+	fmt.Println("params", params)
+	return instruction, nil
+}
+
+// @Description  获取公话状态
+// @param_1 初始报文
+func (o *Origin) TelephoneState() (string, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	t := time.Now().Unix()
+	t2 := time.Unix(t, 0).Format("20060102150405")
+	instruction = "0024820001" + t2
+	return instruction, nil
 }
 
 //处理通话订单
