@@ -97,7 +97,7 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 		case "06":
 			Relation += "姥爷"
 		case "07":
-			Relation += "亲戚"
+			Relation += "教师"
 		default:
 			Relation += "家长"
 		}
