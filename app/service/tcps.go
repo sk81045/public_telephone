@@ -54,9 +54,7 @@ func Run() {
 			}
 			go manager.start()
 			manager.register <- client
-			// go client.Read()
 			go client.Process()
-			go client.Write()
 			go client.Ping()
 		}
 	}
@@ -144,24 +142,6 @@ func (c *Client) Process() bool {
 		}
 	}
 	return true
-}
-
-func (c *Client) Write() {
-	defer c.conn.Close()
-	for {
-		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.conn.Write([]byte{})
-				return
-			}
-			_, err := c.conn.Write([]byte(message))
-			if err != nil {
-				fmt.Println("Server Write failed,err:", err)
-				return
-			}
-		}
-	}
 }
 
 func W(conn net.Conn, msg string) bool {
