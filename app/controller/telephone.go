@@ -5,6 +5,7 @@ import (
 	"Hwgen/global"
 	helpers "Hwgen/utils"
 	"fmt"
+	"go.uber.org/zap"
 	"strconv"
 	"time"
 )
@@ -27,6 +28,7 @@ type Origin struct {
 func (o *Origin) Operation_10(origin string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
+			global.H_LOG.Warn("func Operation_03()", zap.String("公话认证:", err.(string)))
 			fmt.Println(err)
 		}
 	}()
@@ -53,6 +55,7 @@ func (o *Origin) Operation_10(origin string) (string, error) {
 func (o *Origin) Operation_01(origin string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
+			global.H_LOG.Warn("func Operation_01()", zap.String("获取亲情号码:", err.(string)))
 			fmt.Println(err)
 		}
 	}()
@@ -102,7 +105,6 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 			Relation += "家长"
 		}
 	}
-	fmt.Println("IC卡状态正常", helpers.ConvertStr2GBK(Relation))
 	valid = "10"
 	nums := fmt.Sprintf("%d", len(student.Parents))
 	Relation = helpers.ConvertStr2GBK(Relation)
@@ -117,6 +119,7 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 func (o *Origin) Operation_03(origin string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
+			global.H_LOG.Warn("func Operation_03()", zap.String("处理通话订单:", err.(string)))
 			fmt.Println(err)
 		}
 	}()
@@ -171,6 +174,7 @@ func (o *Origin) Operation_81(origin string) (string, error) {
 	o.piece_3 = origin[6:10]
 	instruction = helpers.PackageHead(origin[0:4] + origin[4:6] + origin[6:10] + "1")
 	lastinstruction := instruction + origin[4:6] + origin[6:10] + "1"
+	global.H_LOG.Info("func Operation_81()", zap.String("记录话机状态:", instruction))
 	return lastinstruction, nil
 }
 
@@ -196,6 +200,7 @@ func (o *Origin) Operation_82(origin string) (string, error) {
 // @Description  获取公话状态
 // @param_1 初始报文
 func (o *Origin) TelephoneState() (string, error) {
+
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
