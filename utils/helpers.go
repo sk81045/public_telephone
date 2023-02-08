@@ -37,6 +37,18 @@ func JoiningString(s1 string, s2 string, le int) string {
 	return build.String()
 }
 
+// @Description  拼接字符串达到规定长度
+func JoiningString2(s1 string, s2 string, le int) string {
+	var p string
+	for i := 0; i < le; i++ {
+		p += s2
+	}
+	var build strings.Builder
+	build.WriteString(p)
+	build.WriteString(s1)
+	return build.String()
+}
+
 // @Description  组成TCP包Head(长度4)
 func PackageHead(str string) string {
 	piece2 := fmt.Sprintf("%d", len(str))

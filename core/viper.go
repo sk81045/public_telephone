@@ -60,7 +60,7 @@ func Viper(path ...string) *viper.Viper {
 
 	fmt.Println("软件:", global.H_CONFIG.System.Name)
 	fmt.Println("版本:", global.H_CONFIG.System.Version)
-	fmt.Println("更新说明:", global.H_CONFIG.System.UpdateLog)
+	fmt.Println("端口:", global.H_CONFIG.System.Addr, global.H_CONFIG.System.UpdateLog)
 	fmt.Println("数据库:", global.H_CONFIG.System.DbType, global.H_CONFIG.Mysql.Dbname)
 	return v
 }

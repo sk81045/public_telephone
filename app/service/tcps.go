@@ -2,6 +2,7 @@ package service
 
 import (
 	telephone "Hwgen/app/controller"
+	"Hwgen/global"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"net"
@@ -35,7 +36,7 @@ var (
 )
 
 func Run() {
-	listener, err := net.Listen("tcp", "0.0.0.0:10087")
+	listener, err := net.Listen("tcp", "0.0.0.0:"+fmt.Sprintf("%d", global.H_CONFIG.System.Addr))
 	if err != nil {
 		fmt.Println("Listen tcp server failed,err:", err)
 		return
@@ -91,7 +92,7 @@ func (c *Client) Process() bool {
 	conn := c.conn
 	defer conn.Close()
 	for {
-		var buf [128]byte
+		var buf [512]byte
 		//接受数据
 		n, err := conn.Read(buf[:])
 		if err != nil {
@@ -99,14 +100,14 @@ func (c *Client) Process() bool {
 			break
 		}
 		originstr := string(buf[:n])
-		fmt.Println("origin", originstr)
 		originstr = strings.Replace(originstr, " ", "", -1)
+		fmt.Println("origin", originstr)
 		piece1 := originstr[0:4]
 		piece2 := originstr[4:6]
 		piece3 := originstr[6:10]
-		fmt.Println("piece1", piece1)
-		fmt.Println("piece2", piece2)
-		fmt.Println("piece3", piece3)
+		// fmt.Println("piece1", piece1)
+		// fmt.Println("piece2", piece2)
+		// fmt.Println("piece3", piece3)
 		var instruction string
 		switch piece2 {
 		case "05":
@@ -125,6 +126,12 @@ func (c *Client) Process() bool {
 		case "03":
 			fmt.Println("处理话单")
 			instruction, _ = method.Operation_03(originstr)
+		case "13":
+			fmt.Println("计费通话话单")
+			instruction, _ = method.Operation_13(originstr)
+		case "75":
+			fmt.Println("获取通话费率")
+			instruction, _ = method.Operation_75(originstr)
 		case "81":
 			fmt.Println("公话状态告警")
 			instruction, _ = method.Operation_81(originstr)
@@ -133,7 +140,7 @@ func (c *Client) Process() bool {
 			instruction, _ = method.Operation_82(originstr)
 			continue
 		default:
-			return false
+			continue
 		}
 		fmt.Println("last instruction", instruction)
 		if _, err = conn.Write([]byte(instruction)); err != nil {

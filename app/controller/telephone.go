@@ -66,10 +66,9 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 	o.piece_6 = origin[26:len(origin)]         //time
 
 	valid := "00"
-	student, err := GetStudent(o.piece_5)
-	if err != nil {
-		fmt.Println(err)
-		return instruction + valid, err
+	student := GetStudent(o.piece_5)
+	if student.ID == 0 {
+		return instruction + valid, nil
 	}
 	if student.Balance < 5 {
 		err := fmt.Errorf("IC卡余额不足")
@@ -111,7 +110,7 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 	instruction = o.piece_1 + o.piece_2 + o.piece_3 + valid + nums + Phones + Relation + "0000" + o.piece_6
 	head := helpers.PackageHead(instruction)
 	lastinstruction := head + o.piece_2 + o.piece_3 + valid + nums + Phones + Relation + "0000" + o.piece_6
-	return lastinstruction, err
+	return lastinstruction, nil
 }
 
 // @Description  处理通话订单
@@ -131,8 +130,9 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 	DURATION, _ := strconv.ParseFloat(origin[60:66], 32)
 	NUMBER := origin[66:77] //NUMBER
 
-	Student, _ := GetStudent(IC)
-
+	Student := GetStudent(IC)
+	device, _ := GetDevice(KEY)
+	fee := float32(DURATION) / 60 * device.Fee //计费
 	Calling := CallingLog(model.Calllog{
 		Pid:         Student.ID,
 		Sid:         Student.Sid,
@@ -141,23 +141,116 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 		Describe:    "Calling",
 		PhoneNumber: NUMBER,
 		CallTime:    int(DURATION),
-		Cost:        float32(DURATION) / 60 * 0.2, //计费
+		Cost:        fee,
 		Stime:       STIME,
 		Created_at:  time.Now().Unix(),
 	})
 
 	_ = CallingOrder(model.Payorder{
-		Pid:      Student.ID,
-		Sid:      Student.Sid,
-		Lid:      Calling.ID,
-		Orderid:  "tp" + fmt.Sprintf("%d", time.Now().UnixNano()) + helpers.RandStr(6),
-		Price:    float32(DURATION) / 60 * 0.2, //计费
-		From:     "telephone:" + KEY,
-		Category: "1",
+		Pid:        Student.ID,
+		Sid:        Student.Sid,
+		Lid:        Calling.ID,
+		Ic:         IC,
+		Orderid:    "tp" + fmt.Sprintf("%d", time.Now().UnixNano()) + helpers.RandStr(6),
+		Price:      fee,
+		From:       "telephone:" + KEY,
+		Category:   "1",
+		Created_at: time.Now().Unix(),
 	})
 
 	instruction = helpers.PackageHead(origin[0:4] + origin[4:6] + origin[6:10] + "1")
 	lastinstruction := instruction + origin[4:6] + origin[6:10] + "1"
+	return lastinstruction, nil
+}
+
+// @Description  计费通话话单结算
+// @param_1 初始报文
+func (o *Origin) Operation_13(origin string) (string, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	device_id := origin[10:18]
+	ic := helpers.Hex2Dec(origin[18:26])
+	len_time, _ := strconv.ParseFloat(origin[60:66], 32) //通话时长
+	start_time := origin[46 : 46+14]
+	phone := origin[66 : 66+11]
+
+	Student := GetStudent(ic)
+	device, _ := GetDevice(device_id)
+	fee := float32(len_time) / 60 * device.Fee //计费
+	Calling := CallingLog(model.Calllog{
+		Pid:         Student.ID,
+		Sid:         Student.Sid,
+		Key:         device_id,
+		Ic:          ic,
+		Describe:    "Calling",
+		PhoneNumber: phone,
+		CallTime:    int(len_time),
+		Cost:        fee, //计费
+		Stime:       start_time,
+		Created_at:  time.Now().Unix(),
+	})
+
+	order := CallingOrder(model.Payorder{
+		Pid:        Student.ID,
+		Sid:        Student.Sid,
+		Studentid:  Student.Studentid,
+		Lid:        Calling.ID,
+		Ic:         ic,
+		Orderid:    "tp" + fmt.Sprintf("%d", time.Now().UnixNano()) + helpers.RandStr(6),
+		Price:      fee, //计费
+		From:       "telephone:" + device_id,
+		Category:   "1",
+		Created_at: time.Now().Unix(),
+	})
+	valid := "1"
+	if order.ID == 0 {
+		global.H_LOG.Info("func Operation_13()", zap.String("处理通话订单失败:", fmt.Sprintf("%d", Calling.ID)))
+		valid = "0"
+	}
+	head := helpers.PackageHead(origin[0:4] + origin[4:6] + origin[6:10] + valid)
+	lastinstruction := head + origin[4:6] + origin[6:10] + valid
+	global.H_LOG.Info("func Operation_13()", zap.String("处理通话订单(计费电话):", lastinstruction))
+	return lastinstruction, nil
+}
+
+// @Description  获取通话费率
+// @param_1 初始报文
+func (o *Origin) Operation_75(origin string) (string, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	valid := "1"
+
+	device, err := GetDevice(origin[10:18])
+	if err != nil {
+		fmt.Println("没有获取设备信息")
+		valid = "4"
+	}
+
+	f1 := fmt.Sprintf("%.0f", device.Fee*100)
+	fee := helpers.JoiningString2(f1, "0", 4-len(f1)) //拼接字符得到费率
+
+	student := GetStudent(helpers.Hex2Dec(origin[18:26]))
+	if student.ID == 0 {
+		fmt.Println("没有获取学生信息")
+		valid = "0"
+	}
+
+	f1 = fmt.Sprintf("%.0f", student.Balance*100)
+	balance := helpers.JoiningString2(f1, "0", 10-len(f1)) //拼接字符得到余额
+
+	// phone_code := origin[26:37]
+	instruction := origin[4:6] + origin[6:10] + valid + balance + fee + "999999"
+	head := helpers.PackageHead(origin[0:4] + instruction)
+	lastinstruction := head + instruction
+	global.H_LOG.Info("func Operation_75()", zap.String("获取通话费率:", lastinstruction))
 	return lastinstruction, nil
 }
 
@@ -241,11 +334,13 @@ func GetDevice(key string) (model.Device, error) {
 }
 
 // 获取学生信息
-func GetStudent(ic string) (model.Students, error) {
+func GetStudent(ic string) model.Students {
+	fmt.Println("IC卡号:", ic)
 	var student = model.Students{}
 	err := global.H_DB.Model(&model.Students{}).Where("`cardid` = ?", ic).Preload("Parents").Find(&student).Error
-	if student.ID == 0 {
-		panic("func GetStudent():没有获取到学生信息")
-	}
-	return student, err
+	// if student.ID == 0 {
+	// 	panic("func GetStudent():没有获取到学生信息")
+	// }
+	fmt.Println(err)
+	return student
 }
