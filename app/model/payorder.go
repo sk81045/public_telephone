@@ -9,7 +9,7 @@ type Payorder struct {
 	Ic         string  `gorm:"column:ic"`
 	Orderid    string  `gorm:"column:orderid"`
 	Price      float32 `gorm:"column:price"`
-	Type       string  `gorm:"column:type"`
+	Type       int     `gorm:"column:type"`
 	From       string  `gorm:"column:from"`
 	Paystatus  bool    `gorm:"column:paystatus"`
 	Category   string  `gorm:"column:category"`

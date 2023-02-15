@@ -9,6 +9,7 @@ type Device struct {
 	Fee        float32 `gorm:"column:fee"`
 	Category   string  `gorm:"column:category"`
 	Created_at string  `gorm:"column:created_at"`
+	School     School  `gorm:"foreignKey:id;references:sid"`
 }
 
 func (Device) TableName() string {

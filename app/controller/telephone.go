@@ -4,6 +4,7 @@ import (
 	model "Hwgen/app/model"
 	"Hwgen/global"
 	helpers "Hwgen/utils"
+	"encoding/json"
 	"fmt"
 	"go.uber.org/zap"
 	"strconv"
@@ -45,7 +46,7 @@ func (o *Origin) Operation_10(origin string) (string, error) {
 		return instruction, err
 	} else {
 		instruction += o.piece_3 + "1"
-		fmt.Println("话机状态正常", device.Key)
+		fmt.Println("话机状态正常", "key:", device.Key, "费率:", device.Fee, "归属:", device.School.Name)
 		return instruction, err
 	}
 }
@@ -153,6 +154,7 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 		Ic:         IC,
 		Orderid:    "tp" + fmt.Sprintf("%d", time.Now().UnixNano()) + helpers.RandStr(6),
 		Price:      fee,
+		Type:       2,
 		From:       "telephone:" + KEY,
 		Category:   "1",
 		Created_at: time.Now().Unix(),
@@ -202,6 +204,7 @@ func (o *Origin) Operation_13(origin string) (string, error) {
 		Ic:         ic,
 		Orderid:    "tp" + fmt.Sprintf("%d", time.Now().UnixNano()) + helpers.RandStr(6),
 		Price:      fee, //计费
+		Type:       2,
 		From:       "telephone:" + device_id,
 		Category:   "1",
 		Created_at: time.Now().Unix(),
@@ -237,20 +240,29 @@ func (o *Origin) Operation_75(origin string) (string, error) {
 	f1 := fmt.Sprintf("%.0f", device.Fee*100)
 	fee := helpers.JoiningString2(f1, "0", 4-len(f1)) //拼接字符得到费率
 
-	student := GetStudent(helpers.Hex2Dec(origin[18:26]))
-	if student.ID == 0 {
-		fmt.Println("没有获取学生信息")
+	// student := GetStudent(helpers.Hex2Dec(origin[18:26]))
+	// if student.ID == 0 {
+	// 	fmt.Println("没有获取学生信息")
+	// 	valid = "0"
+	// }
+
+	ic, err := Geticcard(device.Sid, helpers.Hex2Dec(origin[18:26]))
+	if err != nil {
+		fmt.Println("无效的IC卡")
 		valid = "0"
 	}
 
-	f1 = fmt.Sprintf("%.0f", student.Balance*100)
-	balance := helpers.JoiningString2(f1, "0", 10-len(f1)) //拼接字符得到余额
+	score, _ := strconv.ParseFloat(ic.AfterPay, 64)
+	fmt.Println("IC卡号:", helpers.Hex2Dec(origin[18:26]))
+	fmt.Println("人员编号:", ic.UserNO)
+	fmt.Println("卡余额", score)
 
+	f1 = fmt.Sprintf("%.0f", score*100)
+	balance := helpers.JoiningString2(f1, "0", 10-len(f1)) //拼接字符得到余额
 	// phone_code := origin[26:37]
 	instruction := origin[4:6] + origin[6:10] + valid + balance + fee + "999999"
 	head := helpers.PackageHead(origin[0:4] + instruction)
 	lastinstruction := head + instruction
-	global.H_LOG.Info("func Operation_75()", zap.String("获取通话费率:", lastinstruction))
 	return lastinstruction, nil
 }
 
@@ -326,7 +338,7 @@ func CallingLog(data model.Calllog) model.Calllog {
 // 获取设备信息
 func GetDevice(key string) (model.Device, error) {
 	var device = model.Device{}
-	err := global.H_DB.Model(&model.Device{}).Where("`key` = ? AND `category` = ? AND `status` = ?", key, 1, 1).Find(&device).Error
+	err := global.H_DB.Model(&model.Device{}).Preload("School").Where("`key` = ? AND `category` = ? AND `status` = ?", key, 1, 1).Find(&device).Error
 	if device.ID == 0 {
 		panic("func GetDevice():没有获取到此设备信息")
 	}
@@ -335,7 +347,6 @@ func GetDevice(key string) (model.Device, error) {
 
 // 获取学生信息
 func GetStudent(ic string) model.Students {
-	fmt.Println("IC卡号:", ic)
 	var student = model.Students{}
 	err := global.H_DB.Model(&model.Students{}).Where("`cardid` = ?", ic).Preload("Parents").Find(&student).Error
 	// if student.ID == 0 {
@@ -343,4 +354,26 @@ func GetStudent(ic string) model.Students {
 	// }
 	fmt.Println(err)
 	return student
+}
+
+// 获取学校信息
+func GetSchool(id int) model.School {
+	var sc = model.School{}
+	global.H_DB.Model(&model.School{}).Where("`id` = ? ", id).Find(&sc)
+	fmt.Println("学校:", sc.Name)
+	return sc
+}
+
+// 获取最新的IC卡信息
+func Geticcard(sid int, ic string) (model.Cardinfo, error) {
+	sc := GetSchool(sid)
+	body := helpers.HttpGet(sc.Hurl + "/work/cardinfo?ic=" + ic)
+	var res model.CardinfoRes
+	err := json.Unmarshal([]byte(body), &res)
+	if nil != err {
+		fmt.Println("Geticcard() json.Unmarshal err:", err)
+		return model.Cardinfo{}, err
+	}
+
+	return res.Result[0], nil
 }

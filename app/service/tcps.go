@@ -3,6 +3,7 @@ package service
 import (
 	telephone "Hwgen/app/controller"
 	"Hwgen/global"
+	helpers "Hwgen/utils"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"net"
@@ -97,12 +98,13 @@ func (c *Client) Process() bool {
 		n, err := conn.Read(buf[:])
 		if err != nil {
 			fmt.Printf("read from connect failed, err: %v\n", err)
+			manager.unregister <- c
 			break
 		}
 		originstr := string(buf[:n])
 		originstr = strings.Replace(originstr, " ", "", -1)
 		fmt.Println("origin", originstr)
-		piece1 := originstr[0:4]
+		// piece1 := originstr[0:4]
 		piece2 := originstr[4:6]
 		piece3 := originstr[6:10]
 		// fmt.Println("piece1", piece1)
@@ -112,14 +114,15 @@ func (c *Client) Process() bool {
 		switch piece2 {
 		case "05":
 			fmt.Println("网络连接状态查询")
-			instruction = piece1 + piece2 + piece3
+			piece3 = piece3 + "1"
+			instruction = "0011" + piece2 + piece3
 		case "10":
 			fmt.Println("公话认证")
 			instruction, _ = method.Operation_10(originstr)
 		case "04":
 			fmt.Println("学生签到记录")
 			piece3 = piece3 + "1"
-			instruction = piece1 + piece2 + piece3
+			instruction = "0011" + piece2 + piece3
 		case "01":
 			fmt.Println("获取亲情号码")
 			instruction, _ = method.Operation_01(originstr)
@@ -140,6 +143,9 @@ func (c *Client) Process() bool {
 			instruction, _ = method.Operation_82(originstr)
 			continue
 		default:
+			gb := helpers.ConvertStr2GBK(string(buf[:n]))
+			fmt.Println("未识别指令", gb)
+
 			continue
 		}
 		fmt.Println("last instruction", instruction)
@@ -162,7 +168,7 @@ func W(conn net.Conn, msg string) bool {
 
 func (c *Client) Ping() {
 	for {
-		time.Sleep(300 * time.Second)
+		time.Sleep(1 * time.Hour)
 		fmt.Println("Ping...")
 		instruction, _ := method.TelephoneState()
 		d := W(c.conn, instruction)
