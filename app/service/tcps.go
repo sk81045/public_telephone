@@ -3,7 +3,6 @@ package service
 import (
 	telephone "Hwgen/app/controller"
 	"Hwgen/global"
-	helpers "Hwgen/utils"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"net"
@@ -20,7 +19,6 @@ type ClientManager struct {
 }
 
 type Client struct {
-	id   int
 	uuid uuid.UUID
 	conn net.Conn
 	send chan []byte
@@ -54,7 +52,9 @@ func Run() {
 				conn: conn,
 				send: make(chan []byte),
 			}
-			go manager.start()
+			go manager.Start()
+			// manager.Quantity()
+
 			manager.register <- client
 			go client.Process()
 			go client.Ping()
@@ -62,23 +62,29 @@ func Run() {
 	}
 }
 
-func (manager *ClientManager) start() {
+func (manager *ClientManager) Start() {
+LOOP:
 	for {
 		select {
 		case conn := <-manager.register: //如果有新的连接接入,就通过channel把连接传递给conn
 			fmt.Println("Register uuid", conn.uuid)
 			manager.clients[conn] = true
-			fmt.Println("Client quantity", len(manager.clients))
+			manager.Quantity(len(manager.clients))
 		case conn := <-manager.unregister: //断开连接时
 			if _, ok := manager.clients[conn]; ok {
 				close(conn.send)
 				delete(manager.clients, conn)
 			}
-			fmt.Println("Disconnected", conn.uuid)
-			fmt.Println("Client quantity ", len(manager.clients))
-			return
+			fmt.Println("Client", conn.uuid)
+			manager.Quantity(len(manager.clients))
+			break LOOP
 		}
 	}
+	fmt.Println("has been Destroy!")
+}
+
+func (manager *ClientManager) Quantity(ll int) {
+	fmt.Println("Client quantity->", ll)
 }
 
 type Message struct {
@@ -90,14 +96,13 @@ type Message struct {
 }
 
 func (c *Client) Process() bool {
-	conn := c.conn
-	defer conn.Close()
+	// conn := c.conn
+	defer c.conn.Close()
 	for {
-		var buf [512]byte
-		//接受数据
-		n, err := conn.Read(buf[:])
+		var buf [512]byte //接受数据
+		n, err := c.conn.Read(buf[:])
 		if err != nil {
-			fmt.Printf("read from connect failed, err: %v\n", err)
+			fmt.Printf("read from connect failed, ERR: %v\n", err)
 			manager.unregister <- c
 			break
 		}
@@ -107,9 +112,7 @@ func (c *Client) Process() bool {
 		// piece1 := originstr[0:4]
 		piece2 := originstr[4:6]
 		piece3 := originstr[6:10]
-		// fmt.Println("piece1", piece1)
-		// fmt.Println("piece2", piece2)
-		// fmt.Println("piece3", piece3)
+
 		var instruction string
 		switch piece2 {
 		case "05":
@@ -127,10 +130,10 @@ func (c *Client) Process() bool {
 			fmt.Println("获取亲情号码")
 			instruction, _ = method.Operation_01(originstr)
 		case "03":
-			fmt.Println("处理话单")
+			fmt.Println("亲情电话订单处理")
 			instruction, _ = method.Operation_03(originstr)
 		case "13":
-			fmt.Println("计费通话话单")
+			fmt.Println("计费通话订单处理")
 			instruction, _ = method.Operation_13(originstr)
 		case "75":
 			fmt.Println("获取通话费率")
@@ -143,38 +146,40 @@ func (c *Client) Process() bool {
 			instruction, _ = method.Operation_82(originstr)
 			continue
 		default:
-			gb := helpers.ConvertStr2GBK(string(buf[:n]))
-			fmt.Println("未识别指令", gb)
-
+			fmt.Println("未识别指令", string(buf[:n]))
 			continue
 		}
 		fmt.Println("last instruction", instruction)
-		if _, err = conn.Write([]byte(instruction)); err != nil {
-			fmt.Printf("write to client failed, err: %v\n", err)
+		// if _, err = conn.Write([]byte(instruction)); err != nil {
+		// 	fmt.Printf("write to client failed, err: %v\n", err)
+		// 	break
+		// }
+
+		err = W(c.conn, instruction)
+		if err != nil {
+			fmt.Println("c.conn:", c.conn)
+			fmt.Println("Write failed,ERR:", err)
 			break
 		}
-	}
-	return true
-}
-
-func W(conn net.Conn, msg string) bool {
-	_, err := conn.Write([]byte(msg))
-	if err != nil {
-		fmt.Println("Server Write failed,err:", err)
-		return false
 	}
 	return true
 }
 
 func (c *Client) Ping() {
 	for {
-		time.Sleep(1 * time.Hour)
-		fmt.Println("Ping...")
+		// time.Sleep(1 * time.Hour)
+		time.Sleep(1 * time.Minute)
+		fmt.Println("Ping...", c.uuid)
 		instruction, _ := method.TelephoneState()
-		d := W(c.conn, instruction)
-		if d != true {
-			manager.unregister <- c
+		err := W(c.conn, instruction)
+		if err != nil {
+			fmt.Println("Write failed,ERR:", err)
 			break
 		}
 	}
+}
+
+func W(conn net.Conn, msg string) error {
+	_, err := conn.Write([]byte(msg))
+	return err
 }

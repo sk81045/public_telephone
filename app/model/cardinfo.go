@@ -8,6 +8,7 @@ type CardinfoRes struct {
 type Cardinfo struct {
 	FID          int    `gorm:"column:FID"`
 	UserNO       string `gorm:"column:userNO"`
+	Cardid       string `gorm:"column:Cardid"`
 	MacID        string `gorm:"column:macID"`
 	MacType      string `gorm:"column:macType"`
 	PayMoney     string `gorm:"column:payMoney"`

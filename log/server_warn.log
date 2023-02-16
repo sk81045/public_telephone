@@ -18,3 +18,10 @@
 [hxb]2022/11/12 - 19:04:41.863	[33mwarn[0m	/home/hxb/goworkspace/chatH/app/controller/telephone.go:31	func Operation_03()	{"公话认证:": "func GetDevice():没有获取到此设备信息"}
 [hxb]2022/11/12 - 19:04:43.863	[33mwarn[0m	/home/hxb/goworkspace/chatH/app/controller/telephone.go:31	func Operation_03()	{"公话认证:": "func GetDevice():没有获取到此设备信息"}
 [hxb]2022/11/12 - 19:04:45.864	[33mwarn[0m	/home/hxb/goworkspace/chatH/app/controller/telephone.go:31	func Operation_03()	{"公话认证:": "func GetDevice():没有获取到此设备信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:28:12.956	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:224	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:28:17.773	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:224	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:28:22.778	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:224	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:28:27.785	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:224	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:28:32.806	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:224	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:33:28.142	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:227	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
+[github.com/flipped-aurora/gin-vue-admin/server]2023/02/16 - 12:33:33.074	[33mwarn[0m	/home/hxb/go/telephone/app/controller/telephone.go:227	func Operation_13()	{"处理计费通话订单失败:": "没有获取到人员信息"}
