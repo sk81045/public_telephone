@@ -169,7 +169,7 @@ func (c *Client) Ping() {
 	for {
 		// time.Sleep(1 * time.Hour)
 		time.Sleep(1 * time.Minute)
-		fmt.Println("Ping...", c.uuid)
+		fmt.Println("Ping...", c.conn)
 		instruction, _ := method.TelephoneState()
 		err := W(c.conn, instruction)
 		if err != nil {
