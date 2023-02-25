@@ -23,3 +23,16 @@ type Cardinfo struct {
 	Sky          string `gorm:"column:sky"`
 	PayListNO    string `gorm:"column:PayListNO"`
 }
+
+type CardinfoResNew struct {
+	Code   int           `json:"code"`
+	Result []CardinfoNew `json:"result"`
+}
+
+type CardinfoNew struct {
+	FID      int    `gorm:"column:FID"`
+	AfterPay string `gorm:"column:AfterPay"`
+	MacID    string `gorm:"column:MacID"`
+	MacType  string `gorm:"column:MacType"`
+	Cardid   string `gorm:"column:UsernName"`
+}

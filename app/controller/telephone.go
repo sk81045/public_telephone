@@ -73,22 +73,24 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 		fmt.Println(err)
 	}
 
-	icDetails, err := GetIcDetails(device.Sid, o.piece_5) //从学校售饭取得最新的IC卡信息
+	// icDetails, err := GetIcDetails(device.Sid, o.piece_5) //从学校售饭取得最新的IC卡信息
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+
+	valid := "10"
+	student, err := GetStudentIc(o.piece_5, device.Sid) //从平台获取人员
 	if err != nil {
+		valid = "00"
 		fmt.Println(err)
 	}
 
-	valid := "10"
-	student, err := GetStudent(icDetails.UserNO, device.Sid) //从平台获取人员
-	if err != nil {
-		valid = "00"
-		fmt.Println(err)
-	}
-	if student.Balance < 0.1 {
-		err := fmt.Errorf("IC卡余额不足")
-		valid = "00"
-		fmt.Println(err)
-	}
+	fmt.Println("IC卡号:", o.piece_5)
+	// if student.Balance < 0.1 {
+	// 	err := fmt.Errorf("IC卡余额不足")
+	// 	valid = "00"
+	// 	fmt.Println(err)
+	// }
 	if len(student.Parents) == 0 {
 		err := fmt.Errorf("err:没有查询到绑定的号码")
 		valid = "00"
@@ -134,7 +136,7 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 func (o *Origin) Operation_03(origin string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			global.H_LOG.Warn("func Operation_03()", zap.String("成功处理亲情通话订单失败:", err.(string)))
+			global.H_LOG.Warn("func Operation_03()", zap.String("处理亲情通话订单失败:", err.(string)))
 			fmt.Println(err)
 		}
 	}()
@@ -149,11 +151,17 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	icDetails, err := GetIcDetails(device.Sid, IC) //从学校售饭取得最新的IC卡信息
-	if err != nil {
-		fmt.Println(err)
-	}
-	Student, err := GetStudent(icDetails.UserNO, device.Sid)
+	// icDetails, err := GetIcDetails(device.Sid, IC) //从学校售饭取得最新的IC卡信息
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// Student, err := GetStudent(icDetails.UserNO, device.Sid)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return instruction, err
+	// }
+
+	Student, err := GetStudentIc(IC, device.Sid) //从平台获取人员
 	if err != nil {
 		fmt.Println(err)
 		return instruction, err
@@ -396,7 +404,17 @@ func GetStudent(stuid string, sid int) (model.Students, error) {
 	var student = model.Students{}
 	global.H_DB.Model(&model.Students{}).Where("`studentid` = ? AND `sid` = ?", stuid, sid).Preload("Parents").Find(&student)
 	if student.ID == 0 {
-		return student, fmt.Errorf("没有获取到人员信息")
+		return student, fmt.Errorf("没有获取到人员信息-根据学号")
+	}
+	return student, nil
+}
+
+// 获取学生信息
+func GetStudentIc(ic string, sid int) (model.Students, error) {
+	var student = model.Students{}
+	global.H_DB.Model(&model.Students{}).Where("`cardid` = ? AND `sid` = ?", ic, sid).Preload("Parents").Find(&student)
+	if student.ID == 0 {
+		return student, fmt.Errorf("没有获取到人员信息-根据IC卡号")
 	}
 	return student, nil
 }
@@ -409,12 +427,30 @@ func GetSchool(id int) model.School {
 	return sc
 }
 
-// 获取最新的IC卡信息
+// 获取最新的IC卡信息-旧版
 func GetIcDetails(sid int, ic string) (model.Cardinfo, error) {
 	sc := GetSchool(sid)
 	body := helpers.HttpGet(sc.Hurl + "/work/cardinfo?ic=" + ic)
 	fmt.Println("Hurl:", sc.Hurl+"/work/cardinfo?ic="+ic)
 	var res model.CardinfoRes
+	err := json.Unmarshal([]byte(body), &res)
+	if nil != err {
+		panic("FRP接口错误-请求失败")
+	}
+
+	if len(res.Result) == 0 {
+		panic("FRP接口错误-没有获取到IC卡信息")
+	}
+
+	return res.Result[0], nil
+}
+
+// 获取最新的IC卡信息-新版
+func GetIcDetailsNew(sid int, stuid string) (model.CardinfoNew, error) {
+	sc := GetSchool(sid)
+	body := helpers.HttpGet(sc.Hurl + "/work/record?stime=2023-02-09 00:00&etime=2023-02-25 00:00&factor=" + stuid)
+	fmt.Println("Hurl:", sc.Hurl+"/work/record?stime=2023-02-09 00:00&etime=2023-02-25 00:00&factor="+stuid)
+	var res model.CardinfoResNew
 	err := json.Unmarshal([]byte(body), &res)
 	if nil != err {
 		panic("FRP接口错误-请求失败")
