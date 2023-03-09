@@ -54,7 +54,7 @@ func (o *Origin) Operation_10(origin string) (string, error) {
 
 // @Description  获取亲情号码
 // @param_1 初始报文
-func (o *Origin) Operation_01(origin string) (string, error) {
+func (o *Origin) Operation_01(origin string) string {
 	defer func() {
 		if err := recover(); err != nil {
 			global.H_LOG.Warn("func Operation_01()", zap.String("获取亲情号码:", err.(string)))
@@ -67,39 +67,34 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 	o.piece_4 = origin[10:18]                  //key
 	o.piece_5 = helpers.Hex2Dec(origin[18:26]) //IC
 	o.piece_6 = origin[26:len(origin)]         //time
-
+	valid := "10"
 	device, err := GetDevice(o.piece_4) //利用设备信息获取所属单位
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	// icDetails, err := GetIcDetails(device.Sid, o.piece_5) //从学校售饭取得最新的IC卡信息
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
+	icDetails, _ := GetIcDetails(device.Sid, o.piece_5) //从学校售饭取得最新的IC卡信息
+	fmt.Println("IC卡信息:", icDetails)
+	blance, _ := strconv.ParseFloat(icDetails.AfterPay, 64)
+	if blance < 0.2 {
+		valid = "00"
+		fmt.Println("IC卡余额不足")
+	}
 
-	valid := "10"
-	student, err := GetStudentIc(o.piece_5, device.Sid) //从平台获取人员
+	Student, err := GetStudent(icDetails.UserNO, device.Sid) //从平台获取人员
 	if err != nil {
 		valid = "00"
 		fmt.Println(err)
 	}
 
-	fmt.Println("IC卡号:", o.piece_5)
-	// if student.Balance < 0.1 {
-	// 	err := fmt.Errorf("IC卡余额不足")
-	// 	valid = "00"
-	// 	fmt.Println(err)
-	// }
-	if len(student.Parents) == 0 {
-		err := fmt.Errorf("err:没有查询到绑定的号码")
+	if len(Student.Parents) == 0 {
 		valid = "00"
-		fmt.Println(err)
+		fmt.Println("没有查询到绑定的号码")
 	}
 
 	var Phones string
 	var Relation string
-	for _, v := range student.Parents {
+	for _, v := range Student.Parents {
 		if len(v.Phone) == 11 {
 			Phones += helpers.JoiningString(v.Phone, " ", 4) //拼接字符
 		}
@@ -123,12 +118,12 @@ func (o *Origin) Operation_01(origin string) (string, error) {
 		}
 	}
 
-	nums := fmt.Sprintf("%d", len(student.Parents))
+	nums := fmt.Sprintf("%d", len(Student.Parents))
 	Relation = helpers.ConvertStr2GBK(Relation)
 	instruction = o.piece_1 + o.piece_2 + o.piece_3 + valid + nums + Phones + Relation + "0000" + o.piece_6
 	head := helpers.PackageHead(instruction)
 	lastinstruction := head + o.piece_2 + o.piece_3 + valid + nums + Phones + Relation + "0000" + o.piece_6
-	return lastinstruction, nil
+	return lastinstruction
 }
 
 // @Description  处理通话订单
@@ -151,17 +146,9 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	// icDetails, err := GetIcDetails(device.Sid, IC) //从学校售饭取得最新的IC卡信息
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// Student, err := GetStudent(icDetails.UserNO, device.Sid)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return instruction, err
-	// }
+	icDetails, _ := GetIcDetails(device.Sid, IC) //从学校售饭取得最新的IC卡信息
 
-	Student, err := GetStudentIc(IC, device.Sid) //从平台获取人员
+	Student, err := GetStudent(icDetails.UserNO, device.Sid) //从平台获取人员
 	if err != nil {
 		fmt.Println(err)
 		return instruction, err
@@ -184,9 +171,10 @@ func (o *Origin) Operation_03(origin string) (string, error) {
 	order := CallingOrder(model.Payorder{
 		Pid:        Student.ID,
 		Sid:        Student.Sid,
+		Studentid:  Student.Studentid,
 		Lid:        Calling.ID,
 		Ic:         IC,
-		Orderid:    "tp" + helpers.RandStr(3) + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Orderid:    "tp" + fmt.Sprintf("%d", time.Now().UnixNano()),
 		Price:      fee,
 		Type:       2,
 		From:       "telephone:" + KEY,
@@ -253,7 +241,7 @@ func (o *Origin) Operation_13(origin string) (string, error) {
 		Studentid:  Student.Studentid,
 		Lid:        Calling.ID,
 		Ic:         ic,
-		Orderid:    "tp" + helpers.RandStr(4) + fmt.Sprintf("%d", time.Now().UnixNano()),
+		Orderid:    "tp" + fmt.Sprintf("%d", time.Now().UnixNano()),
 		Price:      fee, //计费
 		Type:       2,
 		From:       "telephone:" + key,
@@ -430,30 +418,16 @@ func GetSchool(id int) model.School {
 // 获取最新的IC卡信息-旧版
 func GetIcDetails(sid int, ic string) (model.Cardinfo, error) {
 	sc := GetSchool(sid)
+	iclen := len([]rune(ic))
+	if 10 > iclen {
+		ic = "0" + ic
+	}
 	body := helpers.HttpGet(sc.Hurl + "/work/cardinfo?ic=" + ic)
 	fmt.Println("Hurl:", sc.Hurl+"/work/cardinfo?ic="+ic)
-	var res model.CardinfoRes
+	var res model.CardinfoResult
 	err := json.Unmarshal([]byte(body), &res)
 	if nil != err {
-		panic("FRP接口错误-请求失败")
-	}
-
-	if len(res.Result) == 0 {
-		panic("FRP接口错误-没有获取到IC卡信息")
-	}
-
-	return res.Result[0], nil
-}
-
-// 获取最新的IC卡信息-新版
-func GetIcDetailsNew(sid int, stuid string) (model.CardinfoNew, error) {
-	sc := GetSchool(sid)
-	body := helpers.HttpGet(sc.Hurl + "/work/record?stime=2023-02-09 00:00&etime=2023-02-25 00:00&factor=" + stuid)
-	fmt.Println("Hurl:", sc.Hurl+"/work/record?stime=2023-02-09 00:00&etime=2023-02-25 00:00&factor="+stuid)
-	var res model.CardinfoResNew
-	err := json.Unmarshal([]byte(body), &res)
-	if nil != err {
-		panic("FRP接口错误-请求失败")
+		panic("FRP接口通信错误-非预期返回值")
 	}
 
 	if len(res.Result) == 0 {

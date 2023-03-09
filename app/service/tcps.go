@@ -128,7 +128,7 @@ func (c *Client) Process() bool {
 			instruction = "0011" + piece2 + piece3
 		case "01":
 			fmt.Println("获取亲情号码")
-			instruction, _ = method.Operation_01(originstr)
+			instruction = method.Operation_01(originstr)
 		case "03":
 			fmt.Println("亲情电话订单处理")
 			instruction, _ = method.Operation_03(originstr)
