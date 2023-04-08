@@ -424,9 +424,11 @@ func GetIcDetails(sid int, ic string) (model.Cardinfo, error) {
 	}
 	body := helpers.HttpGet(sc.Hurl + "/work/cardinfo?ic=" + ic)
 	fmt.Println("Hurl:", sc.Hurl+"/work/cardinfo?ic="+ic)
+
 	var res model.CardinfoResult
 	err := json.Unmarshal([]byte(body), &res)
 	if nil != err {
+		fmt.Println("err:", err)
 		panic("FRP接口通信错误-非预期返回值")
 	}
 
